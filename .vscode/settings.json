@@ -1,3 +1,4 @@
 {
-    "python.analysis.typeCheckingMode": "basic"
+    "python.analysis.typeCheckingMode": "basic",
+    "python.pythonPath": "/d/Code/projects/Vinidra_CanSat/Code/projects/Vinidra_CanSat/GCS/.gcs_venv/Scripts/python"
 }

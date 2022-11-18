@@ -1,0 +1,21 @@
+> Requirements
+> Design the UI and UX 
+> Backend 
+:: CSV 
+:: Configure
+:: Connect and receive data
+
+
+
+
+Current tasks:
+
+> Figma account
+> Github tutorial 
+> Xbee connection: Xbee serial 
+> CSV export of data
+> Storing data in SD Card 
+
+
+> GUI: Plot 
+

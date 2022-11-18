@@ -10,6 +10,7 @@ dummy_data = open("../test_data/xbee_serial_out.txt","r")
 all_lines = dummy_data.readlines()
 
 
+
 def get_altitude(i):
     if not all_lines:
         return
@@ -29,3 +30,8 @@ if __name__ == '__main__':
     plt.show()
     dummy_data.close()
 	
+
+#    camelCase
+#    PascalCase
+#    snake_case
+

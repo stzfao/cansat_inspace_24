@@ -1,9 +1,9 @@
-def parse_string(input_list):
+def parse_string(input_str):
     # Telemetry format: 
     # TEAM ID, TIME STAMPING, PACKET COUNT, ALTITUDE, PRESSURE, TEMP, VOLTAGE, GNSS Time, GNSS LATITUDE, GNSS LONGITUDE, GNSS ALTITUDE, 
     # GNSS STATS, ACCELEROMETER DATA, GYRO SPIN RATE, FLIGHT SOFTWARE, STATE, Particle Count
 
-    res = input_list.split(",")
+    res = input_str.split(",")
     return res
 
 

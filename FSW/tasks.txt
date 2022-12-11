@@ -1,0 +1,39 @@
+Features: 
+
+SENSOR INTERFACING
+> Sensors
+:: Gyro
+:: Pressure, temperature and humidity
+:: GNSS + RTC: 
+:: Audio Beacon
+> Payload
+:: Record Footage
+:: Dust particle
+:: VOC Gas sensor 
+> Structures
+:: Servo Motor (for parachute 2)
+> ADCS
+:: Detumbling mechanism 
+> Communication
+:: Receive commands
+:: Send Data
+> Power
+:: Voltage divider
+
+CANSAT TASKS::
+> save to onboard sd card
+> save state and time stamp to EEPROM
+
+
+Tasks: 
+
+0. Check between ESP32 vs ESP32 C3 
+1. Interfacing Diagram for both ESP32C3 / ESP32 
+2. Xbee config on board (communications' task)
+3. Sensor ADC data  : Pragya 
+4. GNSS + RTC data  : Tanishka  
+
+Follow datasheet
+> Create dummy data: 
+> open dummy text file 
+> Parse string to get Lat, Long, RTC time 

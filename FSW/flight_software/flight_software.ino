@@ -9,6 +9,7 @@
 #include "SPI.h"
 
 #define EEPROM_SIZE 1
+#define TELEMETRY_GAP 1000
 
 #define LAUNCH_PAD 1
 #define ASCENT 2
@@ -28,12 +29,12 @@
 struct telemetry_data
 {
   // time_stamp;
+  string time_stamp;
   int packet_count;
   double altitude;
   double pressure;
   double temperature;
   double voltage;
-  // gnss_time;
   double latitude;
   double longitude;
   double gnss_altitude;

@@ -111,8 +111,7 @@ void setup() {
   last_transmit = millis();
 
   Serial.begin(9600);
-  // if(!EEPROM.read(EEPROM_ADDR_CALIBRATION))
-  calibrate_sensors();  //calibrate sensors if not already done
+  if(!EEPROM.read(EEPROM_ADDR_CALIBRATION)) calibrate_sensors();  //calibrate sensors if not already done
 
   //start all lines of communications
   XBee.begin(9600, SERIAL_8N1, XBeeRxPin, XBeeTxPin);
@@ -121,13 +120,12 @@ void setup() {
   dustSensor.begin();
 
   /* --------------- Parachute Servo --------------- */
-
   ESP32PWM::allocateTimer(0);
   parachute_lid.setPeriodHertz(50);            // standard 50 hz servo
   parachute_lid.attach(SERVO_PIN, 500, 2400);  // attaches the servo on pin 18 to the servo object
   parachute_lid.write(parachute_servo_position);
-  /* --------------- Flywheel Servo --------------- */
 
+  /* --------------- Flywheel Servo --------------- */
   ESP32PWM::allocateTimer(1);
   flywheel_motor.setPeriodHertz(50);               // standard 50 hz servo
   flywheel_motor.attach(FLYWHEEL_PIN, 500, 2400);  // attaches the servo on pin 18 to the servo object
@@ -153,6 +151,7 @@ void setupSD() {
 }
 
 void calibrate_sensors() {
+  
   /* --------------- BME680 --------------- */
   while (!bme.begin()) {
     Serial.println(F("Could not find a valid BME680 sensor, check wiring!"));
@@ -167,7 +166,6 @@ void calibrate_sensors() {
 
 
   /* --------------- MPU9250 --------------- */
-
   if (mpu.begin() < 0) {
     Serial.println("IMU initialization unsuccessful");
     Serial.println("Check IMU wiring or try cycling power");

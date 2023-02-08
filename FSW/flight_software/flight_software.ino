@@ -1,14 +1,22 @@
 #include <EEPROM.h>
 #include <Wire.h>
-#include <SoftwareSerial.h>
+#include <HarwareSerial.h>
 #include <SPI.h>
 #include <Adafruit_Sensor.h>
+#include <RTCx.h>
 #include "Adafruit_BME680.h"
 #include "FS.h"
 #include "SD.h"
 #include "SPI.h"
 
-#define EEPROM_SIZE 1
+//EEPROM Addresses
+#define EEPROM_SIZE 100
+#define EEPROM_ADDR_STATE 0
+#define EEPROM_ADDR_CALIBRATION 8
+#define EEPROM_ADDR_PACKET_COUNT 16
+#define EEPROM_ADDR_MISSION_START 24
+#define EEPROM_ADDR_P2 32
+
 #define TELEMETRY_GAP 1000
 
 #define LAUNCH_PAD 1
@@ -21,10 +29,13 @@
 #define TEAM_ID (2022ASI-005)
 
 //check these pins later
-#define XbeeTxPin 12 // xbee's tx
-#define XbeeRxPin 13 // xbee's rx 
+#define XBeeTxPin 12 // XBee's tx
+#define XBeeRxPin 13 // XBee's rx 
 
 #define SEALEVELPRESSURE_HPA (1013.25)
+
+uint8_t packet_count = 1;
+uint32_t last_transmit;
 
 struct telemetry_data
 {
@@ -40,27 +51,26 @@ struct telemetry_data
   double gnss_altitude;
   int gnss_satellites;
   //acceleromater data
+  float acc_x, acc_y, acc_z;
   //gyro spin rate
-  int fsw_state;
+  float yaw, pitch, roll;
+  int fsw_state;  
   double check_sum;  
 }
 
 struct payload_data
 {
   double humidity;
-  double VOC_sensor;
-
-  double check_sum;
+  double gas;
+  double dust;  
+  int p2_status;  
 }
 
-struct gyro_data
-{
-  
-}
-
+telemetry_data td;
+payload_data pd;
 Adafruit_BME680 bme;
-SoftwareSerial Xbee = SoftwareSerial(XbeeRxPin, XbeeTxPin);
-uint8_t P1 = 0, P2 = 0; 
+HardwareSerial XBee = HardwareSerial(0);
+uint8_t P2 = 0; 
 
 int STATE = 1;
 
@@ -70,18 +80,22 @@ int ascending()
 }
 
 void setup() 
-{
-  // check last saved state and update as needed
+{  
   EEPROM.begin(EEPROM_SIZE);
-  STATE = EEPROM.read(0);
-  // may need this saved state in the future
+  //read saved EEPROM vals
+  td.fsw_state = EEPROM.get(EEPROM_ADDR_STATE);
+  td.packet_count = EEPROM.get(EEPROM_ADDR_PACKET_COUNT);
 
-  setupSD();
-  //check last saved state
-  calibrateSensors();
+  last_transmit = millis();
   
-  //XBee comms start 
-  Xbee.begin(9600);
+
+  if(!EEPROM.read(EEPROM_ADDR_CALIBRATION)) calibrate_sensors(); //calibrate sensors if not already done
+  
+  //start all lines of communications
+  XBee.begin(9600, SERIAL_8N1, XBeeRxPin, XBeeTxPin);
+
+  //set up the SD, if file doesnt exist then create  
+  setupSD();
 }
 
 void setupSD()
@@ -100,22 +114,23 @@ void setupSD()
   }
 }
 
-void calibrateSensors()
+void calibrate_sensors()
 {
-  //BME680
+  /*---------------BME680---------------*/
+  while(!bme.begin()) 
   {
-    while(!bme.begin()) 
-    {
-      Serial.println(F("Could not find a valid BME680 sensor, check wiring!"));
-    }
-
-    // Set up oversampling and filter initialization
-    bme.setTemperatureOversampling(BME680_OS_8X);
-    bme.setHumidityOversampling(BME680_OS_2X);
-    bme.setPressureOversampling(BME680_OS_4X);
-    bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
-    bme.setGasHeater(320, 150); // 320*C for 150 ms
+    Serial.println(F("Could not find a valid BME680 sensor, check wiring!"));
   }
+
+  // Set up oversampling and filter initialization
+  bme.setTemperatureOversampling(BME680_OS_8X);
+  bme.setHumidityOversampling(BME680_OS_2X);
+  bme.setPressureOversampling(BME680_OS_4X);
+  bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
+  bme.setGasHeater(320, 150); // 320*C for 150 ms
+
+  /*---------------MPU9250---------------*/
+  
 }
 
 void loop(){
@@ -158,20 +173,52 @@ void SDNewLine(fs::FS &fs, const char * path, const char * message)
   file.close();
 }
 
-void saveToEEPROM()
-{
-  
-}
-
 void send_TelemetryData()
 {
+  if(millis() - last_transmit >= TELEMETRY_GAP)
+  {
+    // send string by downlink
+    String telemetry_String = String("");
+    String delimeter = String(",");
 
-  // create telemetry string
-  // telemetry_string = 
-  // send string by downlink
-  // save string to SD card
-  SDNewLine(SD, telemetry_string);
-  
+    telemetry_string += String(TEAM_ID) + delimeter;
+    telemetry_string += String(td.time_stamp - EEPROM.read(EEPROM_ADDR_MISSION_START)) + delimeter;  //edit this (should be time elapsed)
+    telemetry_string += String(td.packet_count) + delimeter;
+    telemetry_string += String(td.altitude) + delimeter;
+    telemetry_string += String(td.pressure) + delimeter;
+    telemetry_string += String(td.temperature) + delimeter;
+    telemetry_string += String(td.voltage) + delimeter;
+    telemetry_string += String(td.time_stamp) + delimeter;
+    telemetry_string += String(td.latitude) + delimeter;
+    telemetry_string += String(td.longitude) + delimeter;
+    telemetry_string += String(td.gnss_altitude) + delimeter;
+    telemetry_string += String(td.gnss_satellites) + delimeter;
+    telemetry_string += String(td.acc_x) + delimeter;
+    telemetry_string += String(td.acc_y) + delimeter;
+    telemetry_string += String(td.acc_z) + delimeter;
+    telemetry_string += String(td.yaw) + delimeter;
+    telemetry_string += String(td.pitch) + delimeter;
+    telemetry_string += String(td.roll) + delimeter;
+    telemetry_string += String(td.fsw_state) + delimeter;
+    telemetry_string += String(pd.humidity) + delimeter;
+    telemetry_string += String(pd.gas) + delimeter;
+    telemetry_string += String(pd.dust) + delimeter;
+    telemetry_string += String(pd.p2_status) + delimeter;
+    
+    td.check_sum = millis() + packet_count + altitude + pressure + temperature + voltage + time_stamp
+                  + latitude + longitude + gnss_altitude + gnss_satellites + acc_x + acc_y + acc_z + yaw + pitch + roll + fsw_state + humidity
+                  + gas + dust + p2_status;
+
+    telemetry_string += String(td.check_sum);
+
+    // send string by XBee
+    XBee.println(telemetry_string);
+    
+    // save string to SD card
+    SDNewLine(SD, telemetry_string);
+
+    EEPROM.put(EEPROM_ADDR_PACKET_COUNT, td.packet_count++);
+  }
 }
 
 void get_TelemetryCommands()

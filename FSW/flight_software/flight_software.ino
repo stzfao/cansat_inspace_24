@@ -260,7 +260,7 @@ void send_TelemetryData() {
     telemetry_string += String(p2_status) + delimeter;
 
     check_sum = millis() + packet_count + altitude + pressure + temperature + voltage
-                + latitude + longitude + gnss_altitude + gnss_satellites
+                + latitude + longitude + gnss_altitude + gnss_satellites + velocity
                 + acc_x + acc_y + acc_z + gyro_x + gyro_y + gyro_z + fsw_state + humidity
                 + gas + dust_density + p2_status;
 

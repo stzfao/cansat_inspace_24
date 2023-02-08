@@ -96,15 +96,13 @@ HardwareSerial l89 = HardwareSerial(2);
 @params: void
 @return: return velocity (double) ====== velocity > 0 : ascending, velocity <>> 0 : descending
 */
-int get_velocity() 
-{
+int get_velocity() {
   //distance aka altitude:
   velocity = (altitude - last_altitude) / (millis() - last_transmit);
   last_altitude = altitude;
 }
 
-void setup() 
-{
+void setup() {
   //EEPROM related work
   EEPROM.begin(EEPROM_SIZE);
   fsw_state = EEPROM.read(EEPROM_ADDR_STATE);
@@ -125,22 +123,21 @@ void setup()
   /* --------------- Parachute Servo --------------- */
 
   ESP32PWM::allocateTimer(0);
-	parachute_lid.setPeriodHertz(50);    // standard 50 hz servo
-	parachute_lid.attach(SERVO_PIN, 500, 2400); // attaches the servo on pin 18 to the servo object
+  parachute_lid.setPeriodHertz(50);            // standard 50 hz servo
+  parachute_lid.attach(SERVO_PIN, 500, 2400);  // attaches the servo on pin 18 to the servo object
   parachute_lid.write(parachute_servo_position);
   /* --------------- Flywheel Servo --------------- */
 
   ESP32PWM::allocateTimer(1);
-	flywheel_motor.setPeriodHertz(50);    // standard 50 hz servo
-	flywheel_motor.attach(FLYWHEEL_PIN, 500, 2400); // attaches the servo on pin 18 to the servo object
-  flywheel.write(flywheel_servo_position); //centered around 90 degrees
+  flywheel_motor.setPeriodHertz(50);               // standard 50 hz servo
+  flywheel_motor.attach(FLYWHEEL_PIN, 500, 2400);  // attaches the servo on pin 18 to the servo object
+  flywheel.write(flywheel_servo_position);         //centered around 90 degrees
 
   /* --------------- SD Card --------------- */
   setupSD();
 }
 
-void setupSD() 
-{
+void setupSD() {
   Serial.begin(115200);
   if (!SD.begin()) {
     Serial.println("Card Mount Failed");
@@ -155,8 +152,7 @@ void setupSD()
   }
 }
 
-void calibrate_sensors() 
-{
+void calibrate_sensors() {
   /* --------------- BME680 --------------- */
   while (!bme.begin()) {
     Serial.println(F("Could not find a valid BME680 sensor, check wiring!"));
@@ -188,8 +184,7 @@ void calibrate_sensors()
   mpu.calibrateMag();
 }
 
-void loop() 
-{
+void loop() {
   switch (fsw_state) {
     case LAUNCH_PAD:
       runState_LAUNCH_PAD();
@@ -209,8 +204,7 @@ void loop()
   }
 }
 
-void SDNewLine(fs::FS &fs, const char *path, const char *message) 
-{
+void SDNewLine(fs::FS &fs, const char *path, const char *message) {
   Serial.printf("Appending to file: %s\n", path);
 
   File file = fs.open(path, FILE_APPEND);
@@ -226,8 +220,7 @@ void SDNewLine(fs::FS &fs, const char *path, const char *message)
   file.close();
 }
 
-void send_TelemetryData() 
-{
+void send_TelemetryData() {
 
   if (!start_telemetry) return;  //if we are not to start telemetry yet:
 
@@ -262,7 +255,7 @@ void send_TelemetryData()
     telemetry_string += String(gyro_y) + delimeter;
     telemetry_string += String(gyro_z) + delimeter;
     telemetry_string += String(fsw_state) + delimeter;
-    telemetry_string += String(velocity) + delimeter; //m/s
+    telemetry_string += String(velocity) + delimeter;  //m/s
     telemetry_string += String(humidity) + delimeter;
     telemetry_string += String(gas) + delimeter;
     telemetry_string += String(dust) + delimeter;
@@ -290,8 +283,7 @@ void send_TelemetryData()
   }
 }
 
-void get_TelemetryCommands() 
-{
+void get_TelemetryCommands() {
   if (XBee.available() > 0) {
     command = XBee.read();
     //if the data is 0, turn off the LED
@@ -311,9 +303,8 @@ void get_TelemetryCommands()
   }
 }
 
-void get_L89HA_Data() 
-{
-  while (l89.available() <= 0) ;
+void get_L89HA_Data() {
+  while (l89.available() <= 0);
 
   if (l89.available() > 0 && gnss.encode(l89.read()) && gnss.location.isValid()) {
     latitude = gnss.location.lat() / 10000;  //in 0.0001 degrees
@@ -324,8 +315,7 @@ void get_L89HA_Data()
   }
 }
 
-void get_MPU9250_Data() 
-{
+void get_MPU9250_Data() {
   mpu.readSensor();
 
   acc_x = mpu.getAccelX_mss();
@@ -337,13 +327,11 @@ void get_MPU9250_Data()
   gyro_z = mpu.getGyroZ_rads();
 }
 
-void get_DustSensor_Data() 
-{
+void get_DustSensor_Data() {
   dust_density = dustSensor.read();
 }
 
-void get_BME680_Data() 
-{
+void get_BME680_Data() {
   //BME680 data
   unsigned long endTime = bme.beginReading();
   if (endTime == 0) {
@@ -362,50 +350,42 @@ void get_BME680_Data()
   gas = bme.gas_resistance;
 }
 
-void get_voltage()
-{
+void get_voltage() {
   float R2 = 4.6;
   float R1 = 16.4;
 
   float value = analogRead(VOLTAGE_DIVIDER);
   float vout = (value * 3.3) / 1024.0;
-  vout /= (R2 / (R1 + R2)); //? 
+  vout /= (R2 / (R1 + R2));  //?
   voltage = vout / 100.0;
 }
 
-void audio_beacon() 
-{
+void audio_beacon() {
   if (play_buzzer) digitalWrite(BUZZER, HIGH);
   else digitalWrite(BUZZER, LOW);
 }
 
-void deploy_parachute2() 
-{
-  if(!p2_status)
-  {
-    for (; parachute_servo_position <= 180; parachute_servo_position += 1) 
-    { // goes from 0 degrees to 180 degrees in steps of 1 degree
-		  myservo.write(parachute_servo_position);    // tell servo to go to position in variable 'pos'
-		  delay(5); // waits 5ms for the servo to reach the position
-	  }
+void deploy_parachute2() {
+  if (!p2_status) {
+    for (; parachute_servo_position <= 180; parachute_servo_position += 1) {  // goes from 0 degrees to 180 degrees in steps of 1 degree
+      myservo.write(parachute_servo_position);                                // tell servo to go to position in variable 'pos'
+      delay(5);                                                               // waits 5ms for the servo to reach the position
+    }
     p2_status++;
   }
 }
 
-void flywheel_mechanism()
-{
-  //the flywheel motor will be centered at 90 degrees initially. 
-  do
-  { 
+void flywheel_mechanism() {
+  //the flywheel motor will be centered at 90 degrees initially.
+  do {
     /* if gyro is negative, we move in the positive direction. aka add/subtract from curr pos */
-    int rotn = gyro_z / GYRO_DIVISION_CONSTANT; 
+    int rotn = gyro_z / GYRO_DIVISION_CONSTANT;
     flywheel_servo_position += rotn;
-    if(flywheel_servo_position > 180) flywheel_servo_position = 180;
-    else if(flywheel_servo_position < 0) flywheel_servo_position = 0;
+    if (flywheel_servo_position > 180) flywheel_servo_position = 180;
+    else if (flywheel_servo_position < 0) flywheel_servo_position = 0;
     flywheel_motor.write(flywheel_servo_position);
-    gyro_z = mpu.getGyroZ_rads(); //updated gyro_z
-  }  
-  while(gyro_z > GYRO_THRESHOLD);
+    gyro_z = mpu.getGyroZ_rads();  //updated gyro_z
+  } while (gyro_z > GYRO_THRESHOLD);
 }
 
 void runState_LAUNCH_PAD() {
@@ -430,7 +410,7 @@ void runState_DESCENT_1() {
 
 void runState_DESCENT_2() {
   EEPROM.write(EEPROM_ADDR_STATE, fsw_state);
-  if(!p2_status) deploy_parachute2();
+  if (!p2_status) deploy_parachute2();
   if (get_velocity() > -0.5) fsw_state = LANDED;
   send_TelemetryData();
 }

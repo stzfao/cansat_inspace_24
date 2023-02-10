@@ -10,7 +10,7 @@
 #include "FS.h"
 #include "SD.h"
 #include "SPI.h"
-
+#include <GP2Y1010AU0F.h>
 
 // EEPROM Addresses
 #define EEPROM_SIZE 100
@@ -87,6 +87,7 @@ Servo parachute_lid;
 Servo flywheel_motor;
 MPU9250 mpu(i2c0, I2C_MPU_ADDR);
 Adafruit_BME680 bme;
+GP2Y1010AU0F dustSensor(DUST_DIGITAL, DUST_ANALOG);
 HardwareSerial XBee = HardwareSerial(0);
 TinyGPSPlus gnss;
 HardwareSerial l89 = HardwareSerial(2);
@@ -129,7 +130,7 @@ void setup() {
   ESP32PWM::allocateTimer(1);
   flywheel_motor.setPeriodHertz(50);               // standard 50 hz servo
   flywheel_motor.attach(FLYWHEEL_PIN, 500, 2400);  // attaches the servo on pin 18 to the servo object
-  flywheel.write(flywheel_servo_position);         //centered around 90 degrees
+  flywheel_motor.write(flywheel_servo_position);         //centered around 90 degrees
 
   /* --------------- SD Card --------------- */
   setupSD();
@@ -256,7 +257,7 @@ void send_TelemetryData() {
     telemetry_string += String(velocity) + delimeter;  //m/s
     telemetry_string += String(humidity) + delimeter;
     telemetry_string += String(gas) + delimeter;
-    telemetry_string += String(dust) + delimeter;
+    telemetry_string += String(dust_density) + delimeter;
     telemetry_string += String(p2_status) + delimeter;
 
     check_sum = millis() + packet_count + altitude + pressure + temperature + voltage
@@ -289,7 +290,7 @@ void get_TelemetryCommands() {
       case 1:
         calibrate_sensors();
         break;
-      case 1:  //start telemetry
+      case 2:  //start telemetry
         start_telemetry = true;
         break;
       case 3:
@@ -366,7 +367,7 @@ void audio_beacon() {
 void deploy_parachute2() {
   if (!p2_status) {
     for (; parachute_servo_position <= 180; parachute_servo_position += 1) {  // goes from 0 degrees to 180 degrees in steps of 1 degree
-      myservo.write(parachute_servo_position);                                // tell servo to go to position in variable 'pos'
+      parachute_lid.write(parachute_servo_position);                                // tell servo to go to position in variable 'pos'
       delay(5);                                                               // waits 5ms for the servo to reach the position
     }
     p2_status++;

@@ -2,9 +2,11 @@
 #include <Wire.h>
 #include <HardwareSerial.h>
 #include <SPI.h>
-#include "MPU9250.h"
+#include <Wire.h>
+#include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
 #include <ESP32Servo.h>
+#include <Servo.h>
 #include "Adafruit_BME680.h"
 #include <TinyGPS++.h>
 #include "FS.h"
@@ -19,7 +21,7 @@
 #define EEPROM_ADDR_PACKET_COUNT 16
 #define EEPROM_ADDR_MISSION_START 24
 #define EEPROM_ADDR_P2 32
-
+S
 // I2C Addresses
 #define I2C_MPU_ADDR 0x68
 
@@ -37,28 +39,29 @@
 
 //TELEMETRY DEFINITIONS
 #define TEAM_ID "2022ASI-005"
-
-//check these pins later
 #define XBeeTxPin 12  // XBee's tx
 #define XBeeRxPin 13  // XBee's rx
-#define GPSTxPin 17   // XBee's tx
-#define GPSRxPin 16   // XBee's rx
+#define GPSTxPin 17   // GPS's tx
+#define GPSRxPin 16   // GPS's rx
 #define BUZZER 35
-#define DUST_ANALOG 5    // Connect dust sensor analog measure pin to Arduino A0 pin
-#define DUST_DIGITAL 34  // For Dust Sensor's PWM input from the uc
+#define DUST_ANALOG 18    // dust sensor analog
+#define DUST_DIGITAL 34  // Dust Sensor's PWM input
 #define SERVO_PIN 4
-#define FLYWHEEL_PIN 14
-#define VOLTAGE_DIVIDER 15
+#define FLYWHEEL_PIN 12
+#define VOLTAGE_DIVIDER 14
+#define ESPCamRxPin 15
+#define ESPCamTxPin 2
 
 #define SEALEVELPRESSURE_HPA (1013.25)
 
 uint32_t last_transmit;
 float last_altitude;
 uint8_t command = 0, parachute_servo_position = 0, flywheel_servo_position = 90;  //any commands rcv from the GCS.
-bool play_buzzer = true, start_telemetry = false;
 /* 1: Calibrate Sensors
 2: Start Telemetry
 3: Start/Stop audio beacon */
+bool play_buzzer = true, start_telemetry = false;
+
 
 
 // telemetry constants
@@ -85,7 +88,7 @@ int p2_status = 0;
 
 Servo parachute_lid;
 Servo flywheel_motor;
-MPU9250 mpu(i2c0, I2C_MPU_ADDR);
+Adafruit_MPU6050 mpu;
 Adafruit_BME680 bme;
 GP2Y1010AU0F dustSensor(DUST_DIGITAL, DUST_ANALOG);
 HardwareSerial XBee = HardwareSerial(0);
@@ -102,6 +105,11 @@ int get_velocity() {
   velocity = (altitude - last_altitude) / (millis() - last_transmit);
   last_altitude = altitude;
 }
+
+// void test()
+// {
+//   get_BME  
+// }
 
 void setup() {
   //EEPROM related work
@@ -129,7 +137,7 @@ void setup() {
   /* --------------- Flywheel Servo --------------- */
   ESP32PWM::allocateTimer(1);
   flywheel_motor.setPeriodHertz(50);               // standard 50 hz servo
-  flywheel_motor.attach(FLYWHEEL_PIN, 500, 2400);  // attaches the servo on pin 18 to the servo object
+  flywheel_motor.attach(FLYWHEEL_PIN, 1000, 2000);  // attaches the servo on pin 18 to the servo object
   flywheel_motor.write(flywheel_servo_position);         //centered around 90 degrees
 
   /* --------------- SD Card --------------- */
@@ -228,7 +236,7 @@ void send_TelemetryData() {
     // update variable data
     get_L89HA_Data();
     get_BME680_Data();
-    get_MPU9250_Data();
+    get_MPU6050_Data();
     get_DustSensor_Data();
     get_velocity();
 
@@ -314,7 +322,7 @@ void get_L89HA_Data() {
   }
 }
 
-void get_MPU9250_Data() {
+void get_MPU6050_Data() {
   mpu.readSensor();
 
   acc_x = mpu.getAccelX_mss();
